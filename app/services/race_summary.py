@@ -1,29 +1,48 @@
+import numpy as np
 from app.services.data_loader import load_csv_by_pattern
 
-def parse_lap_time_to_seconds(lap_time_str: str) -> float:
+def parse_lap_time_to_seconds(lap_time_str: str) -> float | None:
     try:
-        minutes, seconds = lap_time_str.split(":")
-        return int(minutes) * 60 + float(seconds)
+        if not isinstance(lap_time_str, str): return None
+        m, s = lap_time_str.strip().split(":")
+        return int(m) * 60 + float(s)
     except Exception:
         return None
 
 def get_race_summary(track: str, race: str):
-    # Load results and lap times
-    results = load_csv_by_pattern(track, race, "*Results*Official*.csv")
-    laps = load_csv_by_pattern(track, race, "*lap_time*R*.csv")
+    # Official results (has POS, NUMBER, LAPS, BEST_LAP_TIME, BEST_LAP_KPH)
+    results, res_path = load_csv_by_pattern(track, race, "*Results*Official*.csv")
 
-    # Convert BEST_LAP_TIME to seconds
+    # JSON-safe primitives
+    total_drivers = int(results["NUMBER"].astype(str).nunique())
+    total_laps = int(results["LAPS"].max())
+
+    # fastest lap from results
     results["BEST_LAP_SECONDS"] = results["BEST_LAP_TIME"].apply(parse_lap_time_to_seconds)
-    fastest_lap_formatted = results.loc[results["BEST_LAP_SECONDS"].idxmin(), "BEST_LAP_TIME"]
+    idx_min = results["BEST_LAP_SECONDS"].idxmin()
+    fastest_lap_formatted = results.loc[idx_min, "BEST_LAP_TIME"]
 
-    summary = {
+    # winner by POS
+    winner_row = results.sort_values("POS", ascending=True).iloc[0]
+    winner_number = str(winner_row["NUMBER"])
+    winner_vehicle = winner_row["VEHICLE"] if "VEHICLE" in results.columns else None
+
+    return {
         "track": track.upper(),
         "race": race,
-        "total_drivers": int(results["NUMBER"].nunique()),     # Convert to Python int
-        "total_laps": int(results["LAPS"].max()),              # Convert to Python int
-        "fastest_lap": fastest_lap_formatted,                  # Already a formatted string
-        "winner": int(results.sort_values(by="POS").iloc[0]["NUMBER"])
+        "files": {"results_official": res_path},
+        "metrics": {
+            "total_drivers": total_drivers,
+            "total_laps": total_laps,
+            "fastest_lap": {
+                "formatted": fastest_lap_formatted,
+                "seconds": float(results.loc[idx_min, "BEST_LAP_SECONDS"]),
+                "driver_number": winner_row["NUMBER"] if np.isnan(winner_row["POS"]) else None  # optional
+            },
+            "winner": {
+                "number": winner_number,
+                "vehicle": winner_vehicle,
+                "pos": int(winner_row["POS"]),
+            },
+        },
     }
-    return summary
-
-
