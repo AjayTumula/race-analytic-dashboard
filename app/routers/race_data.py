@@ -1,7 +1,11 @@
-from fastapi import APIRouter, HTTPException, Query
-from app.services.data_loader import list_tracks, list_races
+from fastapi import APIRouter, HTTPException
+from app.services.data_loader import list_tracks, list_races, load_csv_by_pattern
 from app.services.race_summary import get_race_summary
 from app.services.driver_analysis import analyze_driver_performance
+from app.services.weather_analysis import get_weather_data
+from app.services.results_comparison import compare_results
+from app.services.pit_strategy import get_pit_windows
+from app.services.prediction import predict_winner
 import logging
 
 logger = logging.getLogger(__name__)
@@ -37,3 +41,35 @@ def driver_analysis(track: str, race: str):
     except Exception as e:
         logger.exception(e)
         raise HTTPException(400, str(e))
+
+@router.get("/{track}/{race}/weather")
+def weather_data(track: str, race: str):
+    try:
+        data = get_weather_data(track, race)
+        logger.info(f"[WEATHER] {track}/{race}")
+        return data
+    except Exception as e:
+        logger.exception(e)
+        raise HTTPException(400, str(e))
+
+@router.get("/{track}/{race}/results/compare")
+def compare_race_results(track: str, race: str):
+    try:
+        data = compare_results(track, race)
+        logger.info(f"[COMPARE-RESULTS] {track}/{race}")
+        return data
+    except Exception as e:
+        logger.exception(e)
+        raise HTTPException(400, str(e))
+
+@router.get("/{track}/{race}/pit-strategy")
+def pit_strategy(track: str, race: str):
+    try:
+        data = get_pit_windows(track, race)
+        logger.info(f"[PIT-STRATEGY] {track}/{race}")
+        return data
+    except Exception as e:
+        logger.exception(e)
+        raise HTTPException(400, str(e))
+
+
