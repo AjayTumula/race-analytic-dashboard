@@ -5,7 +5,7 @@ from app.services.driver_analysis import analyze_driver_performance
 from app.services.weather_analysis import get_weather_data
 from app.services.results_comparison import compare_results
 from app.services.pit_strategy import get_pit_windows
-from app.services.prediction import predict_winner
+
 import logging
 
 logger = logging.getLogger(__name__)
